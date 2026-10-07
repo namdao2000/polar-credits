@@ -211,6 +211,7 @@
   function d8(s) { var p = String(s).split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); }
   function dShort(s) { var d = d8(s); return d.getDate() + " " + MONTHS[d.getMonth()]; }
   function dLong(s) { var d = d8(s); return DAYS[d.getDay()] + " " + d.getDate() + " " + MONTHS[d.getMonth()]; }
+  function nextDay(s) { var d = d8(s); d.setDate(d.getDate() + 1); var m = d.getMonth() + 1, dd = d.getDate(); return d.getFullYear() + "-" + (m < 10 ? "0" : "") + m + "-" + (dd < 10 ? "0" : "") + dd; }
   function nb(s) { return String(s).replace(/ /g, "\u00a0"); }
   function timeOf(s) {
     var m = String(s || "").match(/(\d{1,2}):(\d{2})/); if (!m) return "";
@@ -308,7 +309,7 @@
       $("sub").innerHTML = bits.filter(Boolean).join(" &middot; ") + ".";
     } else {
       $("headline").innerHTML = 'Lyra has used <span class="n">' + fmt(latest.cycle) + "</span> Polar credits so far this billing cycle.";
-      $("sub").innerHTML = "Tracking started " + dLong(team[0].date) + ". Daily spend shows up after the next nightly reading.";
+      $("sub").innerHTML = "Tracking started " + dLong(team[0].date) + ". The first daily figure lands with the " + dLong(nextDay(latest.date)) + " reading at 11:55 PM PT.";
     }
 
     // Stats row
@@ -341,7 +342,7 @@
       var el = $("daily");
       var data = state.days ? series.filter(function (s) { return (d8(latest.date) - d8(s.r.date)) / 864e5 < state.days; }) : series;
       if (!data.length) {
-        el.innerHTML = '<div class="empty">' + (series.length ? "No readings in this range." : "The first bar appears after the next nightly reading. Each night at 11:55 PM PT adds one.") + "</div>";
+        el.innerHTML = '<div class="empty">' + (series.length ? "No readings in this range." : "The first bar lands with the " + dLong(nextDay(latest.date)) + " reading at 11:55 PM PT. Each night adds one.") + "</div>";
         $("legend").innerHTML = "";
         return;
       }
