@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lyra on Polar: daily credit spend</title>
+<meta name="description" content="How many Polar credits the Lyra team uses each day, read nightly from the Polar team dashboard.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='13' cy='18' r='9' fill='none' stroke='%2313212C' stroke-width='3'/%3E%3Ccircle cx='20' cy='11' r='8' fill='%2313212C'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --paper: #F7F9FA;
+    --ink: #13212C;
+    --muted: #566573;
+    --faint: #8A97A3;
+    --rule: #DCE3E8;
+    --accent: #C8452A;
+    --display: Georgia, "Iowan Old Style", "Times New Roman", serif;
+    --body: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font: 16px/1.5 var(--body); font-variant-numeric: tabular-nums;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 40px 28px 64px; }
+  a { color: inherit; text-underline-offset: 3px; text-decoration-color: var(--faint); }
+  a:hover { text-decoration-color: var(--ink); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  header.top { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+  .brand { font-weight: 600; letter-spacing: .01em; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+  .brand svg { width: 18px; height: 18px; }
+  .stamp { font-size: 13px; color: var(--muted); }
+
+  .hero { margin: 56px 0 8px; max-width: 860px; }
+  .hero h1 {
+    font-family: var(--display); font-weight: 400; font-size: clamp(32px, 5.2vw, 56px);
+    line-height: 1.08; letter-spacing: -.015em; margin: 0;
+  }
+  .hero h1 .n { color: var(--accent); white-space: nowrap; }
+  .hero p.sub { margin: 18px 0 0; font-size: 17px; color: var(--muted); max-width: 720px; }
+  .hero p.sub b { color: var(--ink); font-weight: 600; }
+
+  .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; margin: 48px 0 0; padding: 22px 0 0; border-top: 1px solid var(--rule); }
+  .stat .k { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+  .stat .v { font-size: 26px; font-weight: 600; margin-top: 4px; letter-spacing: -.01em; }
+  .stat .h { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+  section { margin-top: 64px; }
+  .sec-head { display: flex; justify-content: space-between; align-items: end; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
+  h2 { font-family: var(--display); font-weight: 400; font-size: 26px; margin: 0; letter-spacing: -.01em; }
+  .sec-note { font-size: 14px; color: var(--muted); margin: 4px 0 0; }
+
+  .range { display: inline-flex; border: 1px solid var(--rule); border-radius: 999px; padding: 3px; background: #fff; }
+  .range button {
+    font: 500 13px var(--body); color: var(--muted); background: none; border: 0; border-radius: 999px;
+    padding: 5px 12px; cursor: pointer;
+  }
+  .range button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+
+  .chart { position: relative; width: 100%; }
+  .chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .chart .axis text { font: 11px var(--body); fill: var(--faint); }
+  .chart .grid line { stroke: var(--rule); stroke-width: 1; }
+  .chart .bar { cursor: default; }
+  .chart .bar:focus { outline: none; }
+  .chart .bar:focus .hit, .chart .bar:hover .hit { fill: rgba(19, 33, 44, .06); }
+  .empty {
+    border: 1px dashed var(--rule); border-radius: 10px; padding: 48px 24px; text-align: center;
+    color: var(--muted); font-size: 15px; background: #fff;
+  }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 12px; font-size: 13px; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+
+  .tip {
+    position: absolute; pointer-events: none; z-index: 5; min-width: 180px; max-width: 260px;
+    background: var(--ink); color: #fff; border-radius: 8px; padding: 10px 12px; font-size: 13px;
+    box-shadow: 0 6px 24px rgba(19, 33, 44, .18); opacity: 0; transform: translateY(4px);
+    transition: opacity .12s, transform .12s;
+  }
+  .tip.on { opacity: 1; transform: none; }
+  .tip .t { font-weight: 600; margin-bottom: 6px; }
+  .tip .row { display: flex; justify-content: space-between; gap: 14px; color: #D5DDE3; }
+  .tip .row b { color: #fff; font-weight: 500; }
+  .tip .row i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; margin-right: 6px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 15px; }
+  thead th {
+    text-align: right; font-weight: 500; font-size: 12px; color: var(--muted); text-transform: uppercase;
+    letter-spacing: .08em; padding: 0 0 10px; border-bottom: 1px solid var(--rule);
+  }
+  thead th:first-child, tbody td:first-child { text-align: left; }
+  tbody td { padding: 12px 0; border-bottom: 1px solid var(--rule); text-align: right; white-space: nowrap; }
+  tbody td.who .nm { display: inline-flex; align-items: center; gap: 10px; }
+  tbody td.who i { width: 10px; height: 10px; border-radius: 2px; flex: none; display: inline-block; }
+  td.share { width: 28%; padding-left: 24px; }
+  .sharebar { display: flex; align-items: center; gap: 10px; justify-content: flex-end; }
+  .sharebar .track { flex: 1; height: 6px; background: #E8EDF1; border-radius: 3px; overflow: hidden; max-width: 220px; }
+  .sharebar .fill { height: 100%; background: var(--ink); border-radius: 3px; }
+  .sharebar span { width: 44px; text-align: right; color: var(--muted); font-size: 13px; }
+  td.dim { color: var(--faint); }
+
+  footer { margin-top: 72px; padding-top: 20px; border-top: 1px solid var(--rule); font-size: 13px; color: var(--muted); display: grid; gap: 6px; }
+  .err { color: var(--accent); }
+
+  @media (max-width: 760px) {
+    .wrap { padding: 28px 18px 48px; }
+    .hero { margin-top: 36px; }
+    .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+    td.share, th.share, td.c7, th.c7 { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { .tip { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="13" cy="18" r="9" fill="none" stroke="#13212C" stroke-width="3"/><circle cx="20" cy="11" r="8" fill="#13212C"/></svg>
+      Lyra on Polar
+    </div>
+    <div class="stamp" id="stamp">Loading the latest reading</div>
+  </header>
+
+  <div class="hero">
+    <h1 id="headline">Reading the Polar dashboard log</h1>
+    <p class="sub" id="sub">&nbsp;</p>
+  </div>
+
+  <div class="stats" id="stats" aria-live="polite"></div>
+
+  <section aria-labelledby="h-daily">
+    <div class="sec-head">
+      <div>
+        <h2 id="h-daily">Credits used per day</h2>
+        <p class="sec-note">Each bar is one nightly reading, split by teammate.</p>
+      </div>
+      <div class="range" role="group" aria-label="Date range">
+        <button type="button" data-days="14" aria-pressed="false">14 days</button>
+        <button type="button" data-days="30" aria-pressed="true">30 days</button>
+        <button type="button" data-days="90" aria-pressed="false">90 days</button>
+        <button type="button" data-days="0" aria-pressed="false">All</button>
+      </div>
+    </div>
+    <div class="chart" id="daily"></div>
+    <div class="legend" id="legend"></div>
+  </section>
+
+  <section aria-labelledby="h-who">
+    <div class="sec-head">
+      <div>
+        <h2 id="h-who">Who is using them</h2>
+        <p class="sec-note" id="who-note">Current billing cycle, from the latest reading.</p>
+      </div>
+    </div>
+    <table id="who">
+      <thead><tr><th>Teammate</th><th id="th-last">Last day</th><th class="c7">Last 7 days</th><th>This cycle</th><th class="share">Share of cycle</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <section aria-labelledby="h-bal">
+    <div class="sec-head">
+      <div>
+        <h2 id="h-bal">Credits left in the team pool</h2>
+        <p class="sec-note">Jumps up on a top-up or plan renewal.</p>
+      </div>
+    </div>
+    <div class="chart" id="balance"></div>
+  </section>
+
+  <footer>
+    <div>Read every night at 11:55 PM Pacific from the Lyra team's Polar dashboard (Overview and Usage by member, current billing cycle). A day's figure is the change since the previous reading.</div>
+    <div>US$ figures use Polar's top-up price of US$5 per 1,000 credits, so treat them as a rough guide. Raw data: <a id="csv-team" href="#">daily totals</a> and <a id="csv-members" href="#">per teammate</a> (CSV).</div>
+  </footer>
+</div>
+<div class="tip" id="tip" role="status"></div>
+<script>
+(function () {
+  "use strict";
+  var PUB = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQP2mpIKJH-lfiWjMhgC5O1HIu5Z11p9FqyDQqxmuvdfnB7WcJWHYtqVUdgjekFW05h0s-dl40zdJz-/pub";
+  var TEAM_URL = PUB + "?gid=0&single=true&output=csv";
+  var MEMBERS_URL = PUB + "?gid=1747295139&single=true&output=csv";
+  var USD_PER_CREDIT = 0.005;
+  var PALETTE = ["#173B57", "#3B7EA1", "#7FB3CF", "#2E5E4E", "#7BA591", "#5E6B7A", "#A7B7C4", "#B9D7E6", "#6C5B7B", "#C6A15B"];
+  var OTHER = "#C9D1D8";
+
+  // Allow ?team=<csv>&members=<csv> overrides for previews.
+  var qs = new URLSearchParams(location.search);
+  var teamSrc = qs.get("team") || TEAM_URL;
+  var memSrc = qs.get("members") || MEMBERS_URL;
+  document.getElementById("csv-team").href = TEAM_URL;
+  document.getElementById("csv-members").href = MEMBERS_URL;
+
+  var $ = function (id) { return document.getElementById(id); };
+  var fmt = function (n) { return n == null ? "-" : Math.round(n).toLocaleString("en-US"); };
+  var usd = function (n) { return n == null ? "-" : "US$" + (n >= 100 ? Math.round(n).toLocaleString("en-US") : n.toFixed(2)); };
+  var compact = function (n) {
+    if (n == null) return "-";
+    var a = Math.abs(n);
+    if (a >= 1e6) return (n / 1e6).toFixed(a >= 1e7 ? 0 : 2).replace(/\.?0+$/, "") + "M";
+    if (a >= 1e4) return Math.round(n / 1e3) + "k";
+    if (a >= 1e3) return (n / 1e3).toFixed(1).replace(/\.0$/, "") + "k";
+    return String(Math.round(n));
+  };
+  var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  var DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  function d8(s) { var p = String(s).split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); }
+  function dShort(s) { var d = d8(s); return d.getDate() + " " + MONTHS[d.getMonth()]; }
+  function dLong(s) { var d = d8(s); return DAYS[d.getDay()] + " " + d.getDate() + " " + MONTHS[d.getMonth()]; }
+  function nb(s) { return String(s).replace(/ /g, "\u00a0"); }
+  function timeOf(s) {
+    var m = String(s || "").match(/(\d{1,2}):(\d{2})/); if (!m) return "";
+    var h = +m[1], ap = h >= 12 ? "PM" : "AM"; h = h % 12 || 12; return h + ":" + m[2] + " " + ap;
+  }
+  function titleCase(s) { return /^[a-z]+$/.test(s) ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
+
+  function parseCSV(text) {
+    var rows = [], row = [], f = "", q = false;
+    for (var i = 0; i < text.length; i++) {
+      var c = text[i];
+      if (q) {
+        if (c === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; }
+        else f += c;
+      } else if (c === '"') q = true;
+      else if (c === ",") { row.push(f); f = ""; }
+      else if (c === "\n") { row.push(f); rows.push(row); row = []; f = ""; }
+      else if (c !== "\r") f += c;
+    }
+    if (f !== "" || row.length) { row.push(f); rows.push(row); }
+    if (!rows.length) return [];
+    var head = rows[0].map(function (h) { return h.trim().toLowerCase(); });
+    return rows.slice(1).filter(function (r) { return r.some(function (v) { return v.trim() !== ""; }); })
+      .map(function (r) { var o = {}; head.forEach(function (h, i) { o[h] = (r[i] || "").trim(); }); return o; });
+  }
+  function num(v) {
+    if (v == null) return null; var s = String(v).replace(/[,$\s]|US/g, "");
+    if (s === "") return null; var n = Number(s); return isNaN(n) ? null : n;
+  }
+  function get(url) {
+    var u = url + (url.indexOf("?") >= 0 ? "&" : "?") + "t=" + Date.now();
+    return fetch(u, { cache: "no-store" }).then(function (r) {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.text();
+    }).then(function (t) {
+      if (/^\s*</.test(t)) throw new Error("sheet is not published");
+      return parseCSV(t);
+    });
+  }
+
+  var state = { days: 30 };
+
+  Promise.all([get(teamSrc), get(memSrc)]).then(function (res) {
+    var team = res[0].map(function (r) {
+      return {
+        date: r["date"], captured: r["captured at (pt)"], hours: num(r["hours covered"]),
+        day: num(r["credits spent (day)"]), usd: num(r["est. us$ (day)"]), runsDay: num(r["runs (day)"]),
+        cycle: num(r["credits used this cycle"]), runsCycle: num(r["runs this cycle"]),
+        balance: num(r["credit balance"]), balChange: num(r["balance change"]), notes: r["notes"] || ""
+      };
+    }).filter(function (r) { return /^\d{4}-\d{2}-\d{2}$/.test(r.date); })
+      .sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+    var members = res[1].map(function (r) {
+      return {
+        date: r["date"], member: r["member"], name: r["name"] || r["member"],
+        day: num(r["credits spent (day)"]), runsDay: num(r["runs (day)"]),
+        cycle: num(r["credits used this cycle"]), runsCycle: num(r["runs this cycle"])
+      };
+    }).filter(function (r) { return r.member && /^\d{4}-\d{2}-\d{2}$/.test(r.date); });
+    if (!team.length) throw new Error("no readings yet");
+    build(team, members);
+  }).catch(function (e) {
+    $("headline").textContent = "The spend log could not be loaded.";
+    $("sub").innerHTML = '<span class="err">' + String(e.message || e) + "</span>. Refresh in a minute; if it keeps failing, check that the Google Sheet is still published to the web.";
+    $("stamp").textContent = "";
+  });
+
+  function build(team, members) {
+    var latest = team[team.length - 1];
+    var daily = team.filter(function (r) { return r.day != null; });
+    var lastDay = daily[daily.length - 1];
+    var last7 = daily.slice(-7);
+    var sum7 = last7.reduce(function (a, r) { return a + r.day; }, 0);
+    var avg7 = last7.length ? sum7 / last7.length : null;
+
+    // Member order and colours: biggest users this cycle first, stable across charts.
+    var latestRows = members.filter(function (m) { return m.date === latest.date; })
+      .sort(function (a, b) { return (b.cycle || 0) - (a.cycle || 0); });
+    var order = latestRows.map(function (m) { return m.member; });
+    members.forEach(function (m) { if (order.indexOf(m.member) < 0) order.push(m.member); });
+    var names = {}; members.forEach(function (m) { names[m.member] = titleCase(m.name.indexOf("@") >= 0 ? m.member : m.name); });
+    var color = {}; order.forEach(function (k, i) { color[k] = PALETTE[i % PALETTE.length]; });
+
+    $("stamp").textContent = "Last reading " + dLong(latest.date) + ", " + timeOf(latest.captured) + " PT";
+
+    // Hero sentence
+    if (lastDay) {
+      $("headline").innerHTML = 'Lyra used <span class="n">' + fmt(lastDay.day) + "</span> Polar credits on " + nb(dLong(lastDay.date)) + ".";
+      var top = members.filter(function (m) { return m.date === lastDay.date && m.day > 0; })
+        .sort(function (a, b) { return b.day - a.day; }).slice(0, 3)
+        .map(function (m) { return "<b>" + names[m.member] + "</b>\u00a0" + fmt(m.day); });
+      var bits = ["About <b>" + usd(lastDay.day * USD_PER_CREDIT) + "</b> at top-up price", (lastDay.runsDay != null ? fmt(lastDay.runsDay) + " runs" : null)];
+      if (top.length) bits.push("most from " + top.join(", "));
+      if (lastDay.hours && (lastDay.hours < 20 || lastDay.hours > 28)) bits.push("covers " + Math.round(lastDay.hours) + " hours");
+      $("sub").innerHTML = bits.filter(Boolean).join(" &middot; ") + ".";
+    } else {
+      $("headline").innerHTML = 'Lyra has used <span class="n">' + fmt(latest.cycle) + "</span> Polar credits so far this billing cycle.";
+      $("sub").innerHTML = "Tracking started " + dLong(team[0].date) + ". Daily spend shows up after the next nightly reading.";
+    }
+
+    // Stats row
+    var runway = avg7 && avg7 > 0 && latest.balance != null ? latest.balance / avg7 : null;
+    var stats = [
+      { k: "Last 7 days", v: last7.length ? fmt(sum7) : "-", h: last7.length ? usd(sum7 * USD_PER_CREDIT) + (last7.length < 7 ? " \u00b7 " + last7.length + " day" + (last7.length > 1 ? "s" : "") + " so far" : "") : "Needs a second reading" },
+      { k: "Daily average", v: avg7 != null ? fmt(avg7) : "-", h: avg7 != null ? "over the last " + last7.length + " reading" + (last7.length > 1 ? "s" : "") : "Needs a second reading" },
+      { k: "This billing cycle", v: fmt(latest.cycle), h: fmt(latest.runsCycle) + " runs" },
+      { k: "Credits left", v: compact(latest.balance), h: runway ? "about " + (runway > 999 ? "999+" : fmt(runway)) + " days at this pace" : fmt(latest.balance) + " in the pool" }
+    ];
+    $("stats").innerHTML = stats.map(function (s) {
+      return '<div class="stat"><div class="k">' + s.k + '</div><div class="v">' + s.v + '</div><div class="h">' + s.h + "</div></div>";
+    }).join("");
+
+    // Daily stacked bars
+    var byDate = {};
+    members.forEach(function (m) { (byDate[m.date] = byDate[m.date] || []).push(m); });
+    var series = daily.map(function (r) {
+      var segs = [], known = 0;
+      order.forEach(function (k) {
+        var m = (byDate[r.date] || []).filter(function (x) { return x.member === k; })[0];
+        if (m && m.day > 0) { segs.push({ k: k, v: m.day }); known += m.day; }
+      });
+      var rest = r.day - known;
+      if (rest > Math.max(5, r.day * 0.01)) segs.push({ k: "_other", v: rest });
+      return { r: r, segs: segs, total: Math.max(r.day, known) };
+    });
+
+    function drawDaily() {
+      var el = $("daily");
+      var data = state.days ? series.filter(function (s) { return (d8(latest.date) - d8(s.r.date)) / 864e5 < state.days; }) : series;
+      if (!data.length) {
+        el.innerHTML = '<div class="empty">' + (series.length ? "No readings in this range." : "The first bar appears after the next nightly reading. Each night at 11:55 PM PT adds one.") + "</div>";
+        $("legend").innerHTML = "";
+        return;
+      }
+      var W = Math.max(320, el.clientWidth), H = W < 600 ? 240 : 300, padL = 44, padR = 4, padT = 10, padB = 26;
+      var max = Math.max.apply(null, data.map(function (s) { return s.total; })) || 1;
+      var step = niceStep(max / 4), top = Math.ceil(max / step) * step;
+      var iw = W - padL - padR, ih = H - padT - padB;
+      var slot = iw / Math.max(data.length, 7), bw = Math.max(3, Math.min(42, slot * 0.68));
+      var y = function (v) { return padT + ih - (v / top) * ih; };
+      var svg = ['<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Credits used per day">'];
+      svg.push('<g class="grid">');
+      for (var t = 0; t <= top + 0.5; t += step) svg.push('<line x1="' + padL + '" x2="' + (W - padR) + '" y1="' + y(t) + '" y2="' + y(t) + '"/>');
+      svg.push('</g><g class="axis">');
+      for (t = 0; t <= top + 0.5; t += step) svg.push('<text x="' + (padL - 8) + '" y="' + (y(t) + 4) + '" text-anchor="end">' + compact(t) + "</text>");
+      var every = Math.ceil(data.length / (W < 600 ? 5 : 9));
+      data.forEach(function (s, i) {
+        if ((data.length - 1 - i) % every === 0) svg.push('<text x="' + (padL + slot * i + slot / 2) + '" y="' + (H - 6) + '" text-anchor="middle">' + dShort(s.r.date) + "</text>");
+      });
+      svg.push("</g>");
+      data.forEach(function (s, i) {
+        var x = padL + slot * i + (slot - bw) / 2, acc = 0;
+        svg.push('<g class="bar" tabindex="0" data-i="' + i + '" aria-label="' + dLong(s.r.date) + ": " + fmt(s.r.day) + ' credits">');
+        svg.push('<rect class="hit" x="' + (padL + slot * i) + '" y="' + padT + '" width="' + slot + '" height="' + ih + '" fill="transparent"/>');
+        s.segs.forEach(function (g) {
+          var y1 = y(acc + g.v), h = Math.max(0.5, y(acc) - y1);
+          svg.push('<rect x="' + x + '" y="' + y1 + '" width="' + bw + '" height="' + h + '" fill="' + (g.k === "_other" ? OTHER : color[g.k]) + '"/>');
+          acc += g.v;
+        });
+        svg.push("</g>");
+      });
+      svg.push("</svg>");
+      el.innerHTML = svg.join("");
+      var bars = el.querySelectorAll(".bar");
+      Array.prototype.forEach.call(bars, function (b) {
+        var s = data[+b.getAttribute("data-i")];
+        var show = function () { tipFor(el, b, s); };
+        b.addEventListener("mouseenter", show); b.addEventListener("focus", show);
+        b.addEventListener("mouseleave", hideTip); b.addEventListener("blur", hideTip);
+      });
+      var used = {}; data.forEach(function (s) { s.segs.forEach(function (g) { used[g.k] = 1; }); });
+      $("legend").innerHTML = order.filter(function (k) { return used[k]; }).map(function (k) {
+        return '<span><i style="background:' + color[k] + '"></i>' + names[k] + "</span>";
+      }).join("") + (used._other ? '<span><i style="background:' + OTHER + '"></i>Not split by teammate</span>' : "");
+    }
+
+    function tipFor(el, b, s) {
+      var tip = $("tip");
+      var rows = s.segs.slice().sort(function (a, c) { return c.v - a.v; }).slice(0, 6).map(function (g) {
+        return '<div class="row"><span><i style="background:' + (g.k === "_other" ? OTHER : color[g.k]) + '"></i>' + (g.k === "_other" ? "Not split" : names[g.k]) + "</span><b>" + fmt(g.v) + "</b></div>";
+      }).join("");
+      tip.innerHTML = '<div class="t">' + dLong(s.r.date) + " \u00b7 " + fmt(s.r.day) + ' credits</div><div class="row"><span>Est. cost</span><b>' + usd(s.r.day * USD_PER_CREDIT) + "</b></div>" +
+        (s.r.runsDay != null ? '<div class="row"><span>Runs</span><b>' + fmt(s.r.runsDay) + "</b></div>" : "") + '<div style="height:6px"></div>' + rows;
+      var br = b.getBoundingClientRect(), pr = document.body.getBoundingClientRect();
+      tip.classList.add("on");
+      var tw = tip.offsetWidth, th = tip.offsetHeight;
+      var left = br.left - pr.left + br.width / 2 - tw / 2;
+      left = Math.max(8, Math.min(left, document.documentElement.clientWidth - tw - 8));
+      var topPos = br.top - pr.top + 40 - th; if (topPos < window.scrollY + 8) topPos = br.top - pr.top + 48;
+      tip.style.left = left + "px"; tip.style.top = topPos + "px";
+    }
+    function hideTip() { $("tip").classList.remove("on"); }
+
+    // Who table
+    var lastDates = daily.slice(-7).map(function (r) { return r.date; });
+    $("th-last").textContent = lastDay ? dShort(lastDay.date) : "Last day";
+    var totalCycle = latestRows.reduce(function (a, m) { return a + (m.cycle || 0); }, 0) || 1;
+    $("who").querySelector("tbody").innerHTML = latestRows.map(function (m) {
+      var d = lastDay ? members.filter(function (x) { return x.member === m.member && x.date === lastDay.date; })[0] : null;
+      var w = members.filter(function (x) { return x.member === m.member && lastDates.indexOf(x.date) >= 0 && x.day != null; })
+        .reduce(function (a, x) { return a + x.day; }, 0);
+      var share = (m.cycle || 0) / totalCycle;
+      return "<tr><td class=\"who\"><span class=\"nm\"><i style=\"background:" + color[m.member] + "\"></i>" + names[m.member] + "</span></td>" +
+        "<td class=\"" + (d && d.day ? "" : "dim") + "\">" + (d && d.day != null ? fmt(d.day) : "-") + "</td>" +
+        "<td class=\"c7 " + (w ? "" : "dim") + "\">" + (lastDates.length ? fmt(w) : "-") + "</td>" +
+        "<td>" + fmt(m.cycle) + "</td>" +
+        "<td class=\"share\"><div class=\"sharebar\"><div class=\"track\"><div class=\"fill\" style=\"width:" + (share * 100).toFixed(1) + "%\"></div></div><span>" + (share * 100).toFixed(share < 0.1 ? 1 : 0) + "%</span></div></td></tr>";
+    }).join("");
+    $("who-note").textContent = "Current billing cycle, from the " + dLong(latest.date) + " reading. Teammates appear once they use credits this cycle.";
+
+    // Balance line
+    function drawBalance() {
+      var el = $("balance"), pts = team.filter(function (r) { return r.balance != null; });
+      if (pts.length < 2) {
+        el.innerHTML = '<div class="empty">' + fmt(pts.length ? pts[0].balance : null) + " credits left at the first reading. The line starts with the second one.</div>";
+        return;
+      }
+      var W = Math.max(320, el.clientWidth), H = 160, padL = 44, padR = 8, padT = 10, padB = 24;
+      var vals = pts.map(function (p) { return p.balance; });
+      var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals);
+      var span = hi - lo || hi * 0.02 || 1; lo = Math.max(0, lo - span * 0.15); hi = hi + span * 0.15;
+      var iw = W - padL - padR, ih = H - padT - padB;
+      var x = function (i) { return padL + (pts.length === 1 ? iw / 2 : (i / (pts.length - 1)) * iw); };
+      var y = function (v) { return padT + ih - ((v - lo) / (hi - lo)) * ih; };
+      var line = pts.map(function (p, i) { return (i ? "L" : "M") + x(i).toFixed(1) + " " + y(p.balance).toFixed(1); }).join(" ");
+      var area = line + " L" + x(pts.length - 1).toFixed(1) + " " + (padT + ih) + " L" + x(0).toFixed(1) + " " + (padT + ih) + " Z";
+      var s = ['<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Credits left over time">'];
+      s.push('<g class="grid"><line x1="' + padL + '" x2="' + (W - padR) + '" y1="' + y(hi) + '" y2="' + y(hi) + '"/><line x1="' + padL + '" x2="' + (W - padR) + '" y1="' + (padT + ih) + '" y2="' + (padT + ih) + '"/></g>');
+      s.push('<g class="axis"><text x="' + (padL - 8) + '" y="' + (y(hi) + 4) + '" text-anchor="end">' + compact(hi) + '</text><text x="' + (padL - 8) + '" y="' + (padT + ih + 4) + '" text-anchor="end">' + compact(lo) + "</text>");
+      s.push('<text x="' + padL + '" y="' + (H - 6) + '">' + dShort(pts[0].date) + '</text><text x="' + (W - padR) + '" y="' + (H - 6) + '" text-anchor="end">' + dShort(pts[pts.length - 1].date) + "</text></g>");
+      s.push('<path d="' + area + '" fill="#173B57" fill-opacity=".07"/><path d="' + line + '" fill="none" stroke="#173B57" stroke-width="2" stroke-linejoin="round"/>');
+      var lp = pts[pts.length - 1];
+      s.push('<circle cx="' + x(pts.length - 1) + '" cy="' + y(lp.balance) + '" r="3.5" fill="#173B57"/>');
+      s.push("</svg>");
+      el.innerHTML = s.join("");
+    }
+
+    function niceStep(raw) {
+      var p = Math.pow(10, Math.floor(Math.log10(Math.max(raw, 1)))), n = raw / p;
+      return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * p;
+    }
+
+    Array.prototype.forEach.call(document.querySelectorAll(".range button"), function (btn) {
+      btn.addEventListener("click", function () {
+        state.days = +btn.getAttribute("data-days");
+        Array.prototype.forEach.call(document.querySelectorAll(".range button"), function (b) { b.setAttribute("aria-pressed", b === btn ? "true" : "false"); });
+        drawDaily();
+      });
+    });
+    var rt; window.addEventListener("resize", function () { clearTimeout(rt); rt = setTimeout(function () { drawDaily(); drawBalance(); }, 120); });
+    drawDaily(); drawBalance();
+  }
+})();
+</script>
+</body>
+</html>
